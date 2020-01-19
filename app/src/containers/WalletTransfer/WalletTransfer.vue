@@ -4,6 +4,15 @@
     <v-flex xs12 mb-4>
       <v-form ref="form" v-model="formValid" @submit.prevent="sendCoin" lazy-validation aria-autocomplete="off" autocomplete="off">
         <v-layout wrap>
+          <v-flex xs12 sm6 px-4>
+            <v-layout wrap>
+              <v-flex xs12>
+                <v-switch class="send-to-many" v-model="airdrop" :label="`Recipients: ${airdrop ? 'Many' : 'One'}`"></v-switch>
+              </v-flex>
+            </v-layout>
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
           <v-flex xs12 sm6 px-4 mb-5>
             <span class="subtitle-2">{{ t('walletTransfer.selectItem') }}</span>
             <div v-if="selectedItemDisplay">
@@ -91,7 +100,110 @@
             <div class="caption font-weight-regular text_2--text">{{ selectedItem.currencyRateText }}</div>
           </v-flex>
         </v-layout>
-        <v-layout wrap>
+        <v-layout wrap mb-5 v-if="airdrop">
+          <v-flex xs12 sm6 px-4>
+            <span class="subtitle-2">Select Audience</span>
+            <v-layout row wrap ml-0 mr-0 class="select-audience-container">
+              <v-flex px-2 py-2 pt-2>
+                <span class="select-audience-text">
+                  You can upload a file with the emails or accounts ID. Make sure to have 1 account per line. Here are the file templates:
+                </span>
+              </v-flex>
+              <v-flex>
+                <v-btn
+                  class="template-option"
+                  text
+                  small
+                  v-for="(templateOption, index) in templateOptions"
+                  :key="index"
+                  @click="downloadAirdropTemplate(index)"
+                >
+                  {{ templateOption }}
+                  <img width="16" :src="require('../../../public/img/icons/download-primary.svg')" />
+                </v-btn>
+              </v-flex>
+              <v-flex mt-3 ml-2 mr-2 xs12>
+                <vue-dropzone
+                  ref="myVueDropzone"
+                  id="dropzone"
+                  :options="dropzoneOptions"
+                  :useCustomSlot="true"
+                  v-on:vdropzone-file-added="fileSelected"
+                >
+                  <div class="dropzone-custom-content">
+                    <h5 id="drag-file-txt">Drag your file here</h5>
+                    <div id="or">or</div>
+                    <v-btn large depressed color="primary" id="select-file-btn">
+                      Select from your computer
+                    </v-btn>
+                    <div id="acceptable-files-txt">Acceptable file types: CSV or TXT</div>
+                  </div>
+                </vue-dropzone>
+              </v-flex>
+              <v-flex px-2 py-2 pt-2 xs12>
+                <span class="select-audience-text">
+                  Please select the channel
+                </span>
+                <div xs12 mt-2>
+                  <span
+                    class="pr-1 text-left select-channel-text"
+                    v-for="(channel, index) in channels"
+                    :key="index"
+                    @click="channelSelected(channel)"
+                  >
+                    <v-icon class="primary--text" small v-if="selectedChannel === channel">$vuetify.icons.radioOn</v-icon>
+                    <v-icon class="text_2--text" small v-else>$vuetify.icons.radioOff</v-icon>
+                    {{ channel }}
+                  </span>
+                </div>
+              </v-flex>
+              <v-flex px-2 py-2 pt-2 xs12>
+                <span class="select-audience-text">
+                  Please select the airdrop refund date, if the user doesn't withdraw the tokens
+                </span>
+                <v-menu v-model="refundDateSelected" :close-on-content-click="false" max-width="290">
+                  <template v-slot:activator="{ on }">
+                    <v-text-field
+                      id="refund-date-input"
+                      :value="computedDateFormattedMomentjs"
+                      clearable
+                      readonly
+                      v-on="on"
+                      @click:clear="refundDate = null"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker :min="todaysDate" v-model="refundDate" @change="refundDateSelected = false"></v-date-picker>
+                </v-menu>
+              </v-flex>
+              <v-flex xs12 mb-2 v-if="channelList.contacts.length > 0">
+                <v-data-table
+                  :headers="channelList.headers"
+                  :items="channelList.contacts"
+                  class="elevation-1"
+                  dense
+                  id="channel-list"
+                  hide-default-footer
+                  :page.sync="page"
+                  @page-count="pageCount = $event"
+                  :items-per-page="itemsPerPage"
+                  :error="airDropError != ''"
+                  :error-messages="airDropError"
+                ></v-data-table>
+                <div class="text-center pt-1" v-if="pageCount > 1">
+                  <v-pagination v-model="page" :length="pageCount"></v-pagination>
+                </div>
+              </v-flex>
+            </v-layout>
+            <div v-if="airDropError != ''" class="v-text-field__details torus-hint">
+              <div class="v-messages">
+                <div class="v-messages__wrapper">
+                  <div class="v-messages__message d-flex error--text px-3">{{ airDropError }}</div>
+                </div>
+              </div>
+            </div>
+          </v-flex>
+        </v-layout>
+        <v-layout wrap v-else>
           <v-flex xs12 sm6 px-4>
             <v-layout wrap>
               <v-flex xs12>
@@ -152,7 +264,7 @@
             </v-layout>
           </v-flex>
         </v-layout>
-        <v-layout wrap>
+        <v-layout wrap v-if="!airdrop">
           <v-flex xs12 px-4 sm6 class="you-send-container">
             <div>
               <span class="subtitle-2">{{ t('walletTransfer.youSend') }}</span>
@@ -250,7 +362,45 @@
             ></v-text-field>
           </v-flex>
         </v-layout>
-        <v-layout mt-4 wrap>
+        <v-layout mt-4 wrap v-if="airdrop">
+          <v-flex xs12 px-4 sm6 class="text-right">
+            <v-btn
+              large
+              depressed
+              color="primary"
+              :disabled="resolvedAirdopAddresses.length <= 0"
+              class="px-6"
+              id="wallet-transfer-submit"
+              @click="prepareAirdrop"
+            >
+              {{ t('walletTransfer.transfer') }}
+            </v-btn>
+            <v-dialog v-model="airDropDialog" max-width="550" persistent>
+              <transfer-confirm
+                :toAddress="airDropMessage"
+                :convertedAmount="
+                  convertedAmount
+                    ? `~ ${convertedAmount} ${
+                        !!toggle_exclusive ? (contractType === CONTRACT_TYPE_ERC721 ? '' : selectedItem.symbol) : selectedCurrency
+                      }`
+                    : ''
+                "
+                :displayAmount="
+                  `${displayAmount} ${!toggle_exclusive ? (contractType === CONTRACT_TYPE_ERC721 ? '' : selectedItem.symbol) : selectedCurrency}`
+                "
+                :assetSelected="contractType === CONTRACT_TYPE_ERC721 ? assetSelected : {}"
+                :isNonFungibleToken="contractType === CONTRACT_TYPE_ERC721"
+                :speedSelected="timeTaken"
+                :transactionFee="gasPriceInCurrency"
+                :selectedCurrency="selectedCurrency"
+                @onClose="airDropDialog = false"
+                @onConfirm="sendAirdrop"
+                :sendEthToContractError="sendEthToContractError"
+              ></transfer-confirm>
+            </v-dialog>
+          </v-flex>
+        </v-layout>
+        <v-layout mt-4 wrap v-else>
           <v-flex xs12 px-4 sm6 class="text-right">
             <v-btn
               large
@@ -343,6 +493,12 @@ const erc721TransferABI = require('human-standard-collectible-abi')
 
 const MAX_GAS = 6721975
 
+// feature airdrop dashboard
+import vue2Dropzone from 'vue2-dropzone'
+import 'vue2-dropzone/dist/vue2Dropzone.min.css'
+import moment from 'moment'
+import { htlcETHABI, htlcERC20ABI, htlcERC721ABI, getHTLCContractAddress } from '../../utils/htlc'
+
 export default {
   name: 'walletTransfer',
   components: {
@@ -351,7 +507,8 @@ export default {
     QrcodeCapture,
     AddContact,
     ComponentLoader,
-    TransferConfirm
+    TransferConfirm,
+    vueDropzone: vue2Dropzone
   },
   data() {
     return {
@@ -392,7 +549,40 @@ export default {
       confirmDialog: false,
       CONTRACT_TYPE_ETH,
       CONTRACT_TYPE_ERC20,
-      CONTRACT_TYPE_ERC721
+      CONTRACT_TYPE_ERC721,
+      // feature airdrop dashboard
+      airdrop: false,
+      templateOptions: ['Email Template', 'Reddit Username Template', 'Discord ID Template'],
+      dropzoneOptions: {
+        url: 'https://localhost/',
+        thumbnailWidth: 120,
+        maxFilesize: 0.5,
+        acceptedFiles: '.txt, .csv',
+        maxFiles: 1
+      },
+      channels: ['Emails', 'Reddit Usernames', 'Discord IDs'],
+      selectedChannel: 'Emails',
+      channelList: {
+        headers: [
+          { text: 'Email', value: 'contact' },
+          { text: 'Amount', value: 'amount' }
+        ],
+        contacts: []
+      },
+      todaysDate: new Date().toISOString().substr(0, 10),
+      refundDate: moment()
+        .add(1, 'days')
+        .toISOString()
+        .substr(0, 10),
+      refundDateSelected: false,
+      totalAirdropAmount: 0,
+      page: 1,
+      pageCount: 0,
+      itemsPerPage: 10,
+      resolvedAirdopAddresses: [],
+      airDropError: '',
+      airDropMessage: '',
+      airDropDialog: false
     }
   },
   computed: {
@@ -488,6 +678,10 @@ export default {
       const targetContact = this.contactSelected
       const addressFound = this.contactList.find(contact => contact.value.toLowerCase() === targetContact.toLowerCase())
       return addressFound === undefined
+    },
+    // feature airdrop dashboard
+    computedDateFormattedMomentjs() {
+      return this.refundDate ? moment(this.refundDate).format('dddd, MMMM Do YYYY') : ''
     }
   },
   methods: {
@@ -910,6 +1104,208 @@ export default {
       if (this.$refs.contactSelected && this.$refs.contactSelected.$refs && this.$refs.contactSelected.$refs.input) {
         this.$refs.contactSelected.$refs.input.name = randomId()
       }
+    },
+    // air drop dashboard functionality
+    channelSelected(channel) {
+      this.selectedChannel = channel
+      this.resetAirdropForm()
+    },
+    downloadAirdropTemplate(index) {
+      let template1 = ''
+      let template2 = ''
+      let filename1 = ''
+      let filename2 = ''
+      if (index === 0) {
+        template1 = 'a@gmail.com\t1\nc@gmail.com\t2'
+        filename1 = 'emails.txt'
+        template2 = 'a@gmail.com,1\nc@d.com,2'
+        filename2 = 'emails.csv'
+      }
+
+      if (index === 1) {
+        template1 = 'nlcy6\t1\nakby9\t2'
+        filename1 = 'reddit.txt'
+        template2 = 'nlcy6,1\nakby9,2'
+        filename2 = 'reddit.csv'
+      }
+      if (index === 2) {
+        template1 = '662318161734926376\t1\n772318161734926598\t2'
+        filename1 = 'discord.txt'
+        template2 = '662318161734926376,1\n772318161734926598,2'
+        filename2 = 'discord.csv'
+      }
+
+      // download the first template
+      let link = document.createElement('a')
+      const url1 = window.URL.createObjectURL(new Blob([template1], { type: 'text/plain;charset=utf-8' }))
+      link.href = url1
+      link.setAttribute('download', filename1)
+      document.body.appendChild(link)
+      link.click()
+
+      let url2 = window.URL.createObjectURL(new Blob([template2], { type: 'application/vnd.ms-excel' }))
+      link.href = url2
+      link.setAttribute('download', filename2)
+      document.body.appendChild(link)
+      link.click()
+    },
+    fileSelected(file) {
+      const filereader = new FileReader()
+      filereader.addEventListener('loadend', async e => {
+        const lines = e.target.result.split('\n')
+        // check if file is a txt file
+        if (lines[0].trim().split(/(\s+)/).length > 0 && lines[0].indexOf(',') <= 0) {
+          lines.forEach(async line => {
+            const details = line.split(/(\s+)/)
+            const contact = details[0]
+            const amount = details[2]
+
+            if (contact !== undefined && amount !== undefined) {
+              // first of all check if the imported account/id is valid based on the selcted channel
+              if (this.validateImportedContact(contact)) {
+                //await this.getResolvedEthAddress(contact)
+              }
+              // then add it to the display list
+              this.channelList.contacts.push({ contact: contact, amount: amount })
+              // update the total cost
+              this.totalAirdropAmount = new BigNumber(amount).plus(this.totalAirdropAmount)
+              this.onChangeDisplayAmount(this.totalAirdropAmount)
+            }
+          })
+        }
+        // or a csv file
+        if (lines[0].trim().split(',').length > 0 && lines[0].indexOf(',') >= 0) {
+          lines.forEach(async line => {
+            const details = line.split(',')
+            const contact = details[0]
+            const amount = details[1]
+
+            if (contact !== undefined && amount !== undefined) {
+              // first of all check if the imported account/id is valid based on the selcted channel
+              if (this.validateImportedContact(contact)) {
+                // await this.getResolvedEthAddress(amount)
+              }
+              // then add it to the display list
+              this.channelList.contacts.push({ contact: contact, amount: amount })
+              // update the total cost
+              this.totalAirdropAmount = new BigNumber(amount).plus(this.totalAirdropAmount)
+              this.onChangeDisplayAmount(this.totalAirdropAmount)
+            }
+          })
+        }
+
+        // after loading the file get the solved addresses if all the addresses are correct
+        if (this.airDropError === '') {
+          await this.getResolvedAirdropEthAddresses()
+        }
+      })
+      filereader.readAsText(file)
+      // disable clicking in the dropzone to prevent another upload
+      this.$refs.myVueDropzone.clickable = false
+    },
+    validateImportedContact(contact) {
+      let contactValid = true
+      // validate each of the imported emails
+      if (this.selectedChannel === 'Emails') {
+        const isValid = validateVerifierId(GOOGLE, contact)
+        if (String(isValid).indexOf('Invalid') >= 0) {
+          this.airDropError = 'Please make sure that all the imported emails are valid!'
+          contactValid = false
+        }
+        this.channelList.headers[0].text = 'Email'
+      }
+
+      if (this.selectedChannel === 'Reddit Usernames') {
+        const isValid = validateVerifierId(REDDIT, contact)
+        if (String(isValid).indexOf('Invalid') >= 0) {
+          this.airDropError = 'Please make sure that all the imported reddit usernames are valid!'
+          contactValid = false
+        }
+        this.channelList.headers[0].text = 'Reddit'
+      }
+
+      if (this.selectedChannel === 'Discord IDs') {
+        const isValid = validateVerifierId(DISCORD, contact)
+        if (String(isValid).indexOf('Invalid') >= 0) {
+          this.airDropError = 'Please make sure that all the imported discord ids are valid!'
+          contactValid = false
+        }
+        this.channelList.headers[0].text = 'Discord'
+      }
+
+      return contactValid
+    },
+    getResolvedAirdropEthAddresses() {
+      let selectedVerifier = ''
+      if (this.selectedChannel === 'Emails') {
+        selectedVerifier = GOOGLE
+      }
+      if (this.selectedChannel === 'Reddit Usernames') {
+        selectedVerifier = REDDIT
+      }
+      if (this.selectedChannel === 'Discord IDs') {
+        selectedVerifier = DISCORD
+      }
+      this.channelList.contacts.forEach(async contact => {
+        try {
+          const resolvedAddress = await torus.getPublicAddress(this.nodeDetails.torusNodeEndpoints, this.nodeDetails.torusNodePub, {
+            verifier: selectedVerifier,
+            verifierId: contact.contact
+          })
+          // add the resolved address to the resolved addresses array
+          this.resolvedAirdopAddresses.push(resolvedAddress)
+        } catch (err) {
+          log.error(err)
+        }
+      })
+    },
+    async prepareAirdrop() {
+      const addresses = getHTLCContractAddress('rinkeby')
+      this.airDropMessage = this.resolvedAirdopAddresses.length + ' addresses'
+      this.airDropDialog = true
+    },
+    async sendAirdrop(ethAddress, amount) {
+      let abi = ''
+      let htlcContractAddress = ''
+
+      if (this.contractType === CONTRACT_TYPE_ETH) {
+        abi = htlc_ETH
+        htlcContractAddress = ''
+      }
+      if (this.contractType === CONTRACT_TYPE_ERC20) {
+        abi = htlc_ERC20
+        htlcContractAddress = ''
+      }
+      if (this.contractType === CONTRACT_TYPE_ERC721) {
+        abi = htlc_ERC721
+        htlcContractAddress = ''
+      }
+
+      try {
+        const HTLCContract = new torus.web3.eth.Contract(abi, htlcContractAddress)
+        const contractId = await HTLCContract.methods.newContract().send({ from: userAccount })
+      } catch (error) {
+        log.error(error)
+      }
+    },
+    resetAirdropForm() {
+      this.channelList.contacts = []
+      this.onChangeDisplayAmount(new BigNumber(0))
+      this.$refs.myVueDropzone.removeAllFiles()
+      this.todaysDate = new Date().toISOString().substr(0, 10)
+      this.refundDate = moment()
+        .add(1, 'days')
+        .toISOString()
+        .substr(0, 10)
+      this.refundDateSelected = false
+      this.totalAirdropAmount = 0
+      this.page = 1
+      this.pageCount = 0
+      this.itemsPerPage = 10
+      this.resolvedAirdopAddresses = []
+      this.$refs.myVueDropzone.clickable = true
+      this.airDropError = ''
+      this.airDropMessage = ''
     }
   },
   mounted() {
