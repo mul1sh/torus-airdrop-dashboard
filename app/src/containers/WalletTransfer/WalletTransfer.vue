@@ -723,6 +723,8 @@ export default {
           token: typeToken.toString(),
           etherscanLink: etherscanLink
         }
+
+        console.log(this.toAddress)
         post(config.api + '/transaction/sendemail', emailObject, {
           headers: {
             Authorization: 'Bearer ' + this.$store.state.jwtToken,
@@ -1309,6 +1311,7 @@ export default {
       this.modalMessageSuccess = true
       // do the airdrop
       this.resolvedAirdopAddresses.forEach((airDropAddress, index) => {
+        console.log(airDropAddress)
         const hashPair = newSecretHashPair(airDropAddress)
         const refundDate = moment(this.refundDate).unix()
         const amount = torus.web3.utils.toWei(this.airdropAmounts[index], 'ether')
@@ -1329,7 +1332,7 @@ export default {
               // if the hashlock has been successful, then send an email to the user
               if (txReceipt.status) {
                 this.toAddress = this.channelList.contacts[index].contact
-                this.amount = amount
+                this.amount = this.airdropAmounts[index]
                 this.sendEmail(this.selectedItem.symbol, transactionHash)
               }
             })
