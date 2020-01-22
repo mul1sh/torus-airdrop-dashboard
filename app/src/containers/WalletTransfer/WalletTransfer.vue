@@ -1306,9 +1306,6 @@ export default {
         abi = htlcERC721ABI
         htlcContractAddress = htlcAddresses.erc721
       }
-      // show the transfer modal
-      this.showModalMessage = true
-      this.modalMessageSuccess = true
       // do the airdrop
       this.resolvedAirdopAddresses.forEach((airDropAddress, index) => {
         console.log(airDropAddress)
@@ -1335,13 +1332,15 @@ export default {
                 this.amount = this.airdropAmounts[index]
                 this.sendEmail(this.selectedItem.symbol, transactionHash)
               }
+              if (index + 1 === this.resolvedAirdopAddresses.length) {
+                this.resetAirdropForm()
+                // show the transfer modal
+                this.showModalMessage = true
+                this.modalMessageSuccess = true
+              }
             })
         } catch (error) {
           log.error(error)
-        }
-
-        if (index + 1 === this.resolvedAirdopAddresses.length) {
-          // this.resetAirdropForm()
         }
       })
     },
