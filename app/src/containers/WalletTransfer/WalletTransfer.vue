@@ -1279,8 +1279,6 @@ export default {
           if (transactionReceipt) {
             if (transactionReceipt.status) {
               resolve(transactionReceipt)
-            } else {
-              reject('transaction failed')
             }
             clearInterval(interval)
           }
