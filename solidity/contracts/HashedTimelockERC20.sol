@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol";
 
 /**
 * @title Hashed Timelock Contracts (HTLCs) on Ethereum ERC20 tokens.
@@ -89,7 +89,8 @@ contract HashedTimelockERC20 {
         _;
     }
 
-    mapping (bytes32 => LockContract) contracts;
+    mapping (bytes32 => LockContract) public contracts;
+    mapping (address => bytes32) addressContractIds;
 
     /**
      * @dev Sender / Payer sets up a new hash time lock contract depositing the
@@ -151,6 +152,8 @@ contract HashedTimelockERC20 {
             false,
             0x0
         );
+        
+        addressContractIds[msg.sender] = contractId;
 
         emit HTLCERC20New(
             contractId,
@@ -161,6 +164,18 @@ contract HashedTimelockERC20 {
             _hashlock,
             _timelock
         );
+    }
+    
+     /**
+     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     * This will transfer the locked funds to their address.
+     *
+     * @param _sender address of the sender.
+     * @return bytes32 the associated contract id
+     */
+    
+    function getContractId(address _sender) external view returns (bytes32) {
+        return  addressContractIds[_sender];
     }
 
     /**

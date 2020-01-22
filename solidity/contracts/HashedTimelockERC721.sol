@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "openzeppelin-solidity/contracts/token/ERC721/ERC721.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol";
 
 /**
 * @title Hashed Timelock Contracts (HTLCs) on Ethereum ERC721 tokens.
@@ -91,7 +91,8 @@ contract HashedTimelockERC721 {
         _;
     }
 
-    mapping (bytes32 => LockContract) contracts;
+    mapping (bytes32 => LockContract) public contracts;
+    mapping (address => bytes32) addressContractIds;
 
     /**
      * @dev Sender / Payer sets up a new hash time lock contract depositing the
@@ -131,6 +132,8 @@ contract HashedTimelockERC721 {
                 _timelock
             )
         );
+        
+        addressContractIds[msg.sender] = contractId;
 
         // Reject if a contract already exists with the same parameters. The
         // sender must change one of these parameters (ideally providing a
@@ -162,6 +165,18 @@ contract HashedTimelockERC721 {
             _hashlock,
             _timelock
         );
+    }
+    
+     /**
+     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     * This will transfer the locked funds to their address.
+     *
+     * @param _sender address of the sender.
+     * @return bytes32 the associated contract id
+     */
+    
+    function getContractId(address _sender) external view returns (bytes32) {
+        return  addressContractIds[_sender];
     }
 
     /**

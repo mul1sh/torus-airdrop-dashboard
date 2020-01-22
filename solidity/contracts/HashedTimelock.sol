@@ -79,6 +79,7 @@ contract HashedTimelock {
     }
 
     mapping (bytes32 => LockContract) contracts;
+    mapping (address => bytes32) addressContractIds;
 
     /**
      * @dev Sender sets up a new hash time lock contract depositing the ETH and
@@ -125,6 +126,8 @@ contract HashedTimelock {
             0x0
         );
 
+        addressContractIds[msg.sender] = contractId;
+
         emit LogHTLCNew(
             contractId,
             msg.sender,
@@ -133,6 +136,17 @@ contract HashedTimelock {
             _hashlock,
             _timelock
         );
+    }
+
+    /**
+     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     *
+     * @param _sender address of the sender.
+     * @return bytes32 the associated contract id
+     */
+
+    function getContractId(address _sender) external view returns (bytes32) {
+        return  addressContractIds[_sender];
     }
 
     /**

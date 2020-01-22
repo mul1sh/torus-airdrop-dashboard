@@ -8,3 +8,4 @@ secrets.json
 .nyc_output
 coverage
 sw.js
+email/

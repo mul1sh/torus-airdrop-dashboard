@@ -1,10 +1,5 @@
 const crypto = require('crypto')
-
-// Format required for sending bytes through eth client:
-//  - hex string representation
-//  - prefixed with 0x
 const bufToStr = b => '0x' + b.toString('hex')
-
 const sha256 = x =>
   crypto
     .createHash('sha256')
@@ -12,7 +7,6 @@ const sha256 = x =>
     .digest()
 
 const random32 = () => crypto.randomBytes(32)
-
 const isSha256Hash = hashStr => /^0x[0-9a-f]{64}$/i.test(hashStr)
 
 const newSecretHashPair = () => {

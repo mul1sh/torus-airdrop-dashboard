@@ -497,7 +497,7 @@ const MAX_GAS = 6721975
 import vue2Dropzone from 'vue2-dropzone'
 import 'vue2-dropzone/dist/vue2Dropzone.min.css'
 import moment from 'moment'
-import { htlcETHABI, htlcERC20ABI, htlcERC721ABI, getHTLCContractAddress } from '../../utils/htlc'
+import { htlcETHABI, htlcERC20ABI, htlcERC721ABI, getHTLCContractAddress, newSecretHashPair } from '../../utils/htlc'
 
 export default {
   name: 'walletTransfer',
@@ -508,6 +508,7 @@ export default {
     AddContact,
     ComponentLoader,
     TransferConfirm,
+    // feature airdrop dashboard
     vueDropzone: vue2Dropzone
   },
   data() {
@@ -580,6 +581,7 @@ export default {
       pageCount: 0,
       itemsPerPage: 10,
       resolvedAirdopAddresses: [],
+      airdropAmounts: [],
       airDropError: '',
       airDropMessage: '',
       airDropDialog: false
@@ -1151,6 +1153,7 @@ export default {
     },
     fileSelected(file) {
       const filereader = new FileReader()
+      const ethBalance = this.selectedItem.computedBalance.toNumber()
       filereader.addEventListener('loadend', async e => {
         const lines = e.target.result.split('\n')
         // check if file is a txt file
@@ -1162,14 +1165,17 @@ export default {
 
             if (contact !== undefined && amount !== undefined) {
               // first of all check if the imported account/id is valid based on the selcted channel
-              if (this.validateImportedContact(contact)) {
-                //await this.getResolvedEthAddress(contact)
-              }
+              this.validateImportedContact(contact)
               // then add it to the display list
               this.channelList.contacts.push({ contact: contact, amount: amount })
+              // add the amount to the amount array
+              this.airdropAmounts.push(amount)
               // update the total cost
               this.totalAirdropAmount = new BigNumber(amount).plus(this.totalAirdropAmount)
               this.onChangeDisplayAmount(this.totalAirdropAmount)
+              if (this.totalAirdropAmount > ethBalance) {
+                this.airDropError = 'Insufficient balance for transaction'
+              }
             }
           })
         }
@@ -1182,14 +1188,17 @@ export default {
 
             if (contact !== undefined && amount !== undefined) {
               // first of all check if the imported account/id is valid based on the selcted channel
-              if (this.validateImportedContact(contact)) {
-                // await this.getResolvedEthAddress(amount)
-              }
+              this.validateImportedContact(contact)
               // then add it to the display list
               this.channelList.contacts.push({ contact: contact, amount: amount })
+              // add the amount to the amount array
+              this.airdropAmounts.push(amount)
               // update the total cost
               this.totalAirdropAmount = new BigNumber(amount).plus(this.totalAirdropAmount)
               this.onChangeDisplayAmount(this.totalAirdropAmount)
+              if (this.totalAirdropAmount > ethBalance) {
+                this.airDropError = 'Insufficient balance for transaction'
+              }
             }
           })
         }
@@ -1260,30 +1269,66 @@ export default {
       })
     },
     async prepareAirdrop() {
-      const addresses = getHTLCContractAddress('rinkeby')
       this.airDropMessage = this.resolvedAirdopAddresses.length + ' addresses'
       this.airDropDialog = true
     },
-    async sendAirdrop(ethAddress, amount) {
+    async waitUntilTransactionMined(transactionHash) {
+      return await new Promise(resolve => {
+        const interval = setInterval(async () => {
+          const transactionReceipt = await torus.web3.eth.getTransactionReceipt(transactionHash)
+          if (transactionReceipt) {
+            if (transactionReceipt.status) {
+              resolve(transactionReceipt)
+            } else {
+              reject('transaction failed')
+            }
+            clearInterval(interval)
+          }
+        }, 1000)
+      })
+    },
+    async sendAirdrop() {
       let abi = ''
       let htlcContractAddress = ''
+      const fromAddress = this.$store.state.selectedAddress
+      const htlcAddresses = getHTLCContractAddress('rinkeby')
 
       if (this.contractType === CONTRACT_TYPE_ETH) {
-        abi = htlc_ETH
-        htlcContractAddress = ''
+        abi = htlcETHABI
+        htlcContractAddress = htlcAddresses.eth
       }
       if (this.contractType === CONTRACT_TYPE_ERC20) {
-        abi = htlc_ERC20
-        htlcContractAddress = ''
+        abi = htlcERC20ABI
+        htlcContractAddress = htlcAddresses.erc20
       }
       if (this.contractType === CONTRACT_TYPE_ERC721) {
-        abi = htlc_ERC721
-        htlcContractAddress = ''
+        abi = htlcERC721ABI
+        htlcContractAddress = htlcAddresses.erc721
       }
 
+      const hashPair = newSecretHashPair()
+      const refundDate = moment(this.refundDate).unix()
+      const amount = torus.web3.utils.toWei(this.airdropAmounts[0], 'ether')
       try {
-        const HTLCContract = new torus.web3.eth.Contract(abi, htlcContractAddress)
-        const contractId = await HTLCContract.methods.newContract().send({ from: userAccount })
+        // create a new hashlock
+        const HTLCContract = new torus.web3.eth.Contract(JSON.parse(abi), htlcContractAddress)
+        const vm = this
+        // create a new hashlock
+        HTLCContract.methods
+          .newContract(this.resolvedAirdopAddresses[0], hashPair.hash, refundDate)
+          .send({ from: fromAddress, value: amount }, async (error, transactionHash) => {
+            if (error) {
+              log.error(error)
+              return
+            }
+            // wait till we get a tx receipt
+            await vm.waitUntilTransactionMined(transactionHash)
+            // then wait a further 15 seconds
+            await new Promise(r => setTimeout(r, 15000))
+            // finally get the contractId of the new hashlock contract
+            const contractId = await HTLCContract.methods.getContractId(fromAddress).call()
+            console.log(contractId)
+          })
       } catch (error) {
         log.error(error)
       }
