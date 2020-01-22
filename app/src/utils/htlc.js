@@ -12,12 +12,10 @@ const sha256 = x =>
     .update(x)
     .digest()
 
-const random32 = () => crypto.randomBytes(32)
-
 const isSha256Hash = hashStr => /^0x[0-9a-f]{64}$/i.test(hashStr)
 
-const newSecretHashPair = () => {
-  const secret = random32()
+const newSecretHashPair = text => {
+  const secret = text
   const hash = sha256(secret)
   return {
     secret: bufToStr(secret),

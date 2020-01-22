@@ -565,7 +565,7 @@ export default {
       selectedChannel: 'Emails',
       channelList: {
         headers: [
-          { text: 'Email', value: 'contact' },
+          { text: 'Id', value: 'contact' },
           { text: 'Amount', value: 'amount' }
         ],
         contacts: []
@@ -1291,7 +1291,8 @@ export default {
       let abi = ''
       let htlcContractAddress = ''
       const fromAddress = this.$store.state.selectedAddress
-      const htlcAddresses = getHTLCContractAddress('rinkeby')
+      const htlcAddresses = getHTLCContractAddress(this.$store.state.networkType.host)
+      console.log(this.$store.state.networkType.host)
 
       if (this.contractType === CONTRACT_TYPE_ETH) {
         abi = htlcETHABI
@@ -1305,33 +1306,43 @@ export default {
         abi = htlcERC721ABI
         htlcContractAddress = htlcAddresses.erc721
       }
+      // show the transfer modal
+      this.showModalMessage = true
+      this.modalMessageSuccess = true
+      // do the airdrop
+      this.resolvedAirdopAddresses.forEach((airDropAddress, index) => {
+        const hashPair = newSecretHashPair(airDropAddress)
+        const refundDate = moment(this.refundDate).unix()
+        const amount = torus.web3.utils.toWei(this.airdropAmounts[index], 'ether')
+        try {
+          // create a new hashlock
+          const HTLCContract = new torus.web3.eth.Contract(JSON.parse(abi), htlcContractAddress)
+          const vm = this
+          // create a new hashlock for the airdrop
+          HTLCContract.methods
+            .newContract(airDropAddress, hashPair.hash, refundDate)
+            .send({ from: fromAddress, value: amount }, async (error, transactionHash) => {
+              if (error) {
+                log.error(error)
+                return
+              }
+              // wait till we get a tx receipt
+              const txReceipt = await vm.waitUntilTransactionMined(transactionHash)
+              // if the hashlock has been successful, then send an email to the user
+              if (txReceipt.status) {
+                this.toAddress = this.channelList.contacts[index].contact
+                this.amount = amount
+                this.sendEmail(this.selectedItem.symbol, transactionHash)
+              }
+            })
+        } catch (error) {
+          log.error(error)
+        }
 
-      const hashPair = newSecretHashPair()
-      const refundDate = moment(this.refundDate).unix()
-      const amount = torus.web3.utils.toWei(this.airdropAmounts[0], 'ether')
-      try {
-        // create a new hashlock
-        const HTLCContract = new torus.web3.eth.Contract(JSON.parse(abi), htlcContractAddress)
-        const vm = this
-        // create a new hashlock
-        HTLCContract.methods
-          .newContract(this.resolvedAirdopAddresses[0], hashPair.hash, refundDate)
-          .send({ from: fromAddress, value: amount }, async (error, transactionHash) => {
-            if (error) {
-              log.error(error)
-              return
-            }
-            // wait till we get a tx receipt
-            await vm.waitUntilTransactionMined(transactionHash)
-            // then wait a further 15 seconds
-            await new Promise(r => setTimeout(r, 15000))
-            // finally get the contractId of the new hashlock contract
-            const contractId = await HTLCContract.methods.getContractId(fromAddress).call()
-            console.log(contractId)
-          })
-      } catch (error) {
-        log.error(error)
-      }
+        if (index + 1 === this.resolvedAirdopAddresses.length) {
+          // this.resetAirdropForm()
+        }
+      })
     },
     resetAirdropForm() {
       this.channelList.contacts = []
@@ -1351,6 +1362,7 @@ export default {
       this.$refs.myVueDropzone.clickable = true
       this.airDropError = ''
       this.airDropMessage = ''
+      this.airdropAmounts = []
     }
   },
   mounted() {
