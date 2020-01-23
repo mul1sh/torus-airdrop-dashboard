@@ -32,6 +32,8 @@ After setting up the app as explained above, you can now run it with the command
 
 ## Contracts
 
+All the contracts required for the hashlocks are in the `solidity` folder. They all have test cases for them and each of the functionality is well documented inside the solidity file.
+
 ### Deployment
 
 Compile and deploy the hashlock contracts under the `solidity` folder to the ethereum network.
