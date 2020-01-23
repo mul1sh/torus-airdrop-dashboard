@@ -724,7 +724,6 @@ export default {
           etherscanLink: etherscanLink
         }
 
-        console.log(this.toAddress)
         post(config.api + '/transaction/sendemail', emailObject, {
           headers: {
             Authorization: 'Bearer ' + this.$store.state.jwtToken,
@@ -932,7 +931,12 @@ export default {
       const fastGasPrice = '0x' + this.activeGasPrice.times(new BigNumber(10).pow(new BigNumber(9))).toString(16)
       const selectedAddress = this.$store.state.selectedAddress
       if (this.contractType === CONTRACT_TYPE_ETH) {
-        const value = '0x' + this.amount.times(new BigNumber(10).pow(new BigNumber(18))).toString(16)
+        const value =
+          '0x' +
+          this.amount
+            .times(new BigNumber(10).pow(new BigNumber(18)))
+            .dp(0, BigNumber.ROUND_DOWN)
+            .toString(16)
         log.info(this.gas.toString())
         torus.web3.eth.sendTransaction(
           {
@@ -960,7 +964,12 @@ export default {
           }
         )
       } else if (this.contractType === CONTRACT_TYPE_ERC20) {
-        const value = '0x' + this.amount.times(new BigNumber(10).pow(new BigNumber(this.selectedItem.decimals))).toString(16)
+        const value =
+          '0x' +
+          this.amount
+            .times(new BigNumber(10).pow(new BigNumber(this.selectedItem.decimals)))
+            .dp(0, BigNumber.ROUND_DOWN)
+            .toString(16)
         this.getTransferMethod(this.contractType, selectedAddress, toAddress, value).send(
           {
             from: selectedAddress,
@@ -1292,7 +1301,6 @@ export default {
       let htlcContractAddress = ''
       const fromAddress = this.$store.state.selectedAddress
       const htlcAddresses = getHTLCContractAddress(this.$store.state.networkType.host)
-      console.log(this.$store.state.networkType.host)
 
       if (this.contractType === CONTRACT_TYPE_ETH) {
         abi = htlcETHABI
@@ -1308,7 +1316,6 @@ export default {
       }
       // do the airdrop
       this.resolvedAirdopAddresses.forEach((airDropAddress, index) => {
-        console.log(airDropAddress)
         const hashPair = newSecretHashPair(airDropAddress)
         const refundDate = moment(this.refundDate).unix()
         const amount = torus.web3.utils.toWei(this.airdropAmounts[index], 'ether')

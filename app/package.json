@@ -74,7 +74,7 @@
     "pify": "^4.0.1",
     "post-message-stream": "^3.0.0",
     "random-id": "^1.0.3",
-    "readable-stream": "^3.4.0",
+    "readable-stream": "^3.5.0",
     "register-service-worker": "^1.6.2",
     "single-call-balance-checker-abi": "^1.0.0",
     "swappable-obj-proxy": "^1.1.0",
@@ -127,9 +127,9 @@
     "ganache-core": "2.8.0",
     "husky": "^4.0.10",
     "isomorphic-fetch": "^2.2.1",
-    "jsdom": "^15.2.1",
+    "jsdom": "^16.0.0",
     "jsdom-global": "^3.0.2",
-    "lint-staged": "^9.5.0",
+    "lint-staged": "^10.0.0",
     "luxon": "^1.21.3",
     "mocha": "^7.0.0",
     "mocha-eslint": "^6.0.0",
@@ -138,7 +138,7 @@
     "nock": "^11.7.2",
     "nyc": "^15.0.0",
     "puppeteer": "^2.0.0",
-    "sass": "^1.24.4",
+    "sass": "^1.25.0",
     "sass-loader": "^8.0.2",
     "sinon": "^8.1.0",
     "sri-toolbox": "^0.2.0",
@@ -167,20 +167,17 @@
   "lint-staged": {
     "*.js": [
       "npm run lint:js --",
-      "prettier --write **/*.js",
-      "git add"
+      "prettier --write **/*.js"
     ],
     "*.vue": [
       "npm run lint:vue --",
-      "prettier --write **/*.vue",
-      "git add"
+      "prettier --write **/*.vue"
     ],
     "*.{json,css,yaml,yml}": [
       "prettier --write **/*.json",
       "prettier --write **/*.css",
       "prettier --write **/*.yml",
-      "prettier --write **/*.yaml",
-      "git add"
+      "prettier --write **/*.yaml"
     ]
   },
   "mocha": {
