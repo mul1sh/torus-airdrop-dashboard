@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/ERC721.sol";
 
 /**
 * @title Hashed Timelock Contracts (HTLCs) on Ethereum ERC721 tokens.
@@ -92,7 +92,8 @@ contract HashedTimelockERC721 {
     }
 
     mapping (bytes32 => LockContract) public contracts;
-    mapping (address => bytes32) addressContractIds;
+    mapping (address => bytes32) senderContractIds;
+    mapping (address => bytes32) receiverContractIds;
 
     /**
      * @dev Sender / Payer sets up a new hash time lock contract depositing the
@@ -133,7 +134,8 @@ contract HashedTimelockERC721 {
             )
         );
         
-        addressContractIds[msg.sender] = contractId;
+        senderContractIds[msg.sender] = contractId;
+        receiverContractIds[_receiver] = contractId;
 
         // Reject if a contract already exists with the same parameters. The
         // sender must change one of these parameters (ideally providing a
@@ -167,16 +169,26 @@ contract HashedTimelockERC721 {
         );
     }
     
-     /**
-     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
-     * This will transfer the locked funds to their address.
+    /**
+     * @dev Called by the sender to get the contractId for an hashlock they have if any.
      *
      * @param _sender address of the sender.
      * @return bytes32 the associated contract id
      */
+
+    function getSenderContractId(address _sender) external view returns (bytes32) {
+        return senderContractIds[_sender];
+    }
     
-    function getContractId(address _sender) external view returns (bytes32) {
-        return  addressContractIds[_sender];
+    /**
+     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     *
+     * @param _receiver address of the receiver.
+     * @return bytes32 the associated contract id
+     */
+
+    function getReceiverContractId(address _receiver) external view returns (bytes32) {
+        return receiverContractIds[_receiver];
     }
 
     /**
@@ -198,6 +210,7 @@ contract HashedTimelockERC721 {
         c.preimage = _preimage;
         c.withdrawn = true;
         ERC721(c.tokenContract).transferFrom(address(this), c.receiver, c.tokenId);
+        delete receiverContractIds[c.receiver];
         emit HTLCERC721Withdraw(_contractId);
         return true;
     }
@@ -218,6 +231,7 @@ contract HashedTimelockERC721 {
         LockContract storage c = contracts[_contractId];
         c.refunded = true;
         ERC721(c.tokenContract).transferFrom(address(this), c.sender, c.tokenId);
+        delete senderContractIds[c.sender];
         emit HTLCERC721Refund(_contractId);
         return true;
     }

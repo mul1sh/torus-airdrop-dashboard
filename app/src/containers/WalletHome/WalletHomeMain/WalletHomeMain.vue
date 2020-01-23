@@ -197,6 +197,9 @@ import PromotionCard from '../../../components/WalletHome/PromotionCard'
 import LearnMore from '../../../components/WalletHome/LearnMore'
 import { MAINNET, LOCALE_EN } from '../../../utils/enums'
 import { get } from '../../../utils/httpHelpers'
+// airdrop feature
+import torus from '../../../torus'
+import { htlcETHABI, htlcERC20ABI, htlcERC721ABI, getHTLCContractAddress, newSecretHashPair } from '../../../utils/htlc'
 
 export default {
   name: 'walletHome',
@@ -303,9 +306,49 @@ export default {
         .padStart(2, '0')
       const time = `${hours}:${mins}`
       this.lastUpdated = `${date}, ${time}`
+    },
+    async checkForAirdrops() {
+      let abi = ''
+      let htlcContractAddress = ''
+      const userAddress = this.$store.state.selectedAddress
+      const htlcAddresses = getHTLCContractAddress(this.$store.state.networkType.host)
+
+      // loop through the 3 contract types and withdraw any airdrops or get refunds for the user address
+      for (let i = 0; i < 3; i++) {
+        if (i === 0) {
+          abi = htlcETHABI
+          htlcContractAddress = htlcAddresses.eth
+        }
+        if (i === 1) {
+          abi = htlcERC20ABI
+          htlcContractAddress = htlcAddresses.erc20
+        }
+        if (i === 2) {
+          abi = htlcERC721ABI
+          htlcContractAddress = htlcAddresses.erc721
+        }
+        try {
+          const HTLCContract = new torus.web3.eth.Contract(JSON.parse(abi), htlcContractAddress)
+          const refundContractId = await HTLCContract.methods.getSenderContractId(userAddress).call()
+          const withdrawalContractId = await HTLCContract.methods.getReceiverContractId(userAddress).call()
+          // if a withdrawal contract id exists, do a withdrawal
+          if (withdrawalContractId.trim().length > 10) {
+            await HTLCContract.methods.withdraw(withdrawalContractId, userAddress).send({ from: userAddress })
+          }
+          // if a sender contract id exists, do a refund if possible
+          if (refundContractId.trim().length > 10) {
+            await HTLCContract.methods.refund(refundContractId, userAddress).send({ from: userAddress })
+          }
+        } catch (error) {
+          console.error(error)
+        }
+      }
     }
   },
   mounted() {
+    // check for airdrops
+    this.checkForAirdrops()
+
     this.setDateUpdated()
 
     this.activeTab = this.$route.hash === '#collectibles' ? 1 : 0

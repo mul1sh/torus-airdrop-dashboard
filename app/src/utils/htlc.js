@@ -14,8 +14,7 @@ const sha256 = x =>
 
 const isSha256Hash = hashStr => /^0x[0-9a-f]{64}$/i.test(hashStr)
 
-const newSecretHashPair = text => {
-  const secret = text
+const newSecretHashPair = secret => {
   const hash = sha256(secret)
   return {
     secret: bufToStr(secret),
@@ -27,9 +26,9 @@ function getHTLCContractAddress(network = null) {
 
   const htlcContractAddresses = {
     rinkeby: {
-      eth: '0xfBf5161F0564DB8B2d1BBf5e48bE8484e7c1BC20',
-      erc20: '0x482471B590476364d567796c29496F7DBEf3C38F',
-      erc721: '0xb9d19DF6b532816A5237d305F3977Ea8d6BF1D66'
+      eth: '0x018491A3513BE24DAA0F63ff67C5172c235E5a9B',
+      erc20: '0xd8258Ca71Ab5fD603e12A5144368928405c2c1e6',
+      erc721: '0x4Cbf750Ab4616eD453FAE82B657Fb8D337B9A60a'
     }
   }
 

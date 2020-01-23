@@ -79,7 +79,8 @@ contract HashedTimelock {
     }
 
     mapping (bytes32 => LockContract) contracts;
-    mapping (address => bytes32) addressContractIds;
+    mapping (address => bytes32) senderContractIds;
+    mapping (address => bytes32) receiverContractIds;
 
     /**
      * @dev Sender sets up a new hash time lock contract depositing the ETH and
@@ -126,7 +127,8 @@ contract HashedTimelock {
             0x0
         );
 
-        addressContractIds[msg.sender] = contractId;
+        senderContractIds[msg.sender] = contractId;
+        receiverContractIds[_receiver] = contractId;
 
         emit LogHTLCNew(
             contractId,
@@ -139,15 +141,27 @@ contract HashedTimelock {
     }
 
     /**
-     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     * @dev Called by the sender to get the contractId for an hashlock they have if any.
      *
      * @param _sender address of the sender.
      * @return bytes32 the associated contract id
      */
 
-    function getContractId(address _sender) external view returns (bytes32) {
-        return  addressContractIds[_sender];
+    function getSenderContractId(address _sender) external view returns (bytes32) {
+        return senderContractIds[_sender];
     }
+    
+    /**
+     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     *
+     * @param _receiver address of the receiver.
+     * @return bytes32 the associated contract id
+     */
+
+    function getReceiverContractId(address _receiver) external view returns (bytes32) {
+        return receiverContractIds[_receiver];
+    }
+
 
     /**
      * @dev Called by the receiver once they know the preimage of the hashlock.
@@ -168,6 +182,7 @@ contract HashedTimelock {
         c.preimage = _preimage;
         c.withdrawn = true;
         c.receiver.transfer(c.amount);
+        delete receiverContractIds[c.receiver];
         emit LogHTLCWithdraw(_contractId);
         return true;
     }
@@ -188,6 +203,7 @@ contract HashedTimelock {
         LockContract storage c = contracts[_contractId];
         c.refunded = true;
         c.sender.transfer(c.amount);
+        delete senderContractIds[c.sender];
         emit LogHTLCRefund(_contractId);
         return true;
     }

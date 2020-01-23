@@ -48,32 +48,7 @@ Compiling ./test/helper/EUToken.sol...
     ✓ refund() should fail before the timelock expiry (283ms)
     ✓ getContract() returns empty record when contract doesn't exist (55ms)
 
-  Contract: HashedTimelock swap between two ERC20 tokens
-    ✓ Step 1: Alice sets up a swap with Bob in the AliceERC20 contract (233ms)
-    ✓ Step 2: Bob sets up a swap with Alice in the BobERC20 contract (239ms)
-    ✓ Step 3: Alice as the initiator withdraws from the BobERC20 with the secret (97ms)
-    ✓ Step 4: Bob as the counterparty withdraws from the AliceERC20 with the secret learned from Alice's withdrawal (144ms)
-    Test the refund scenario:
-      ✓ the swap is set up with 5sec timeout on both sides (3613ms)
-
-  Contract: HashedTimelock swap between ERC721 token and ERC20 token (Delivery vs. Payment)
-    ✓ Step 1: Alice sets up a swap with Bob to transfer the Commodity token #1 (256ms)
-    ✓ Step 2: Bob sets up a swap with Alice in the payment contract (231ms)
-    ✓ Step 3: Alice as the initiator withdraws from the BobERC721 with the secret (95ms)
-    ✓ Step 4: Bob as the counterparty withdraws from the AliceERC721 with the secret learned from Alice's withdrawal (132ms)
-    Test the refund scenario:
-      ✓ the swap is set up with 5sec timeout on both sides (3737ms)
-
-  Contract: HashedTimelock swap between two ERC721 tokens
-    ✓ Step 1: Alice sets up a swap with Bob in the AliceERC721 contract (225ms)
-    ✓ Step 2: Bob sets up a swap with Alice in the BobERC721 contract (265ms)
-    ✓ Step 3: Alice as the initiator withdraws from the BobERC721 with the secret (131ms)
-    ✓ Step 4: Bob as the counterparty withdraws from the AliceERC721 with the secret learned from Alice's withdrawal (119ms)
-    Test the refund scenario:
-      ✓ the swap is set up with 5sec timeout on both sides (3635ms)
-
-
-  39 passing (27s)
+  23 passing (27s)
 ```
 
 ### HashedTimelock

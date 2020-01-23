@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 /**
 * @title Hashed Timelock Contracts (HTLCs) on Ethereum ERC20 tokens.
@@ -90,7 +90,8 @@ contract HashedTimelockERC20 {
     }
 
     mapping (bytes32 => LockContract) public contracts;
-    mapping (address => bytes32) addressContractIds;
+    mapping (address => bytes32) senderContractIds;
+    mapping (address => bytes32) receiverContractIds;
 
     /**
      * @dev Sender / Payer sets up a new hash time lock contract depositing the
@@ -153,7 +154,8 @@ contract HashedTimelockERC20 {
             0x0
         );
         
-        addressContractIds[msg.sender] = contractId;
+        senderContractIds[msg.sender] = contractId;
+        receiverContractIds[_receiver] = contractId;
 
         emit HTLCERC20New(
             contractId,
@@ -166,16 +168,26 @@ contract HashedTimelockERC20 {
         );
     }
     
-     /**
-     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
-     * This will transfer the locked funds to their address.
+    /**
+     * @dev Called by the sender to get the contractId for an hashlock they have if any.
      *
      * @param _sender address of the sender.
      * @return bytes32 the associated contract id
      */
+
+    function getSenderContractId(address _sender) external view returns (bytes32) {
+        return senderContractIds[_sender];
+    }
     
-    function getContractId(address _sender) external view returns (bytes32) {
-        return  addressContractIds[_sender];
+    /**
+     * @dev Called by the receiver to get the contractId for an hashlock they have if any.
+     *
+     * @param _receiver address of the receiver.
+     * @return bytes32 the associated contract id
+     */
+
+    function getReceiverContractId(address _receiver) external view returns (bytes32) {
+        return receiverContractIds[_receiver];
     }
 
     /**
@@ -197,6 +209,7 @@ contract HashedTimelockERC20 {
         c.preimage = _preimage;
         c.withdrawn = true;
         ERC20(c.tokenContract).transfer(c.receiver, c.amount);
+        delete receiverContractIds[c.receiver];
         emit HTLCERC20Withdraw(_contractId);
         return true;
     }
@@ -217,6 +230,7 @@ contract HashedTimelockERC20 {
         LockContract storage c = contracts[_contractId];
         c.refunded = true;
         ERC20(c.tokenContract).transfer(c.sender, c.amount);
+        delete senderContractIds[c.sender];
         emit HTLCERC20Refund(_contractId);
         return true;
     }

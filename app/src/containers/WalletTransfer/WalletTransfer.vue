@@ -573,8 +573,7 @@ export default {
       todaysDate: new Date().toISOString().substr(0, 10),
       refundDate: moment()
         .add(1, 'days')
-        .toISOString()
-        .substr(0, 10),
+        .toISOString(),
       refundDateSelected: false,
       totalAirdropAmount: 0,
       page: 1,
@@ -584,7 +583,8 @@ export default {
       airdropAmounts: [],
       airDropError: '',
       airDropMessage: '',
-      airDropDialog: false
+      airDropDialog: false,
+      airDropTxHashes: []
     }
   },
   computed: {
@@ -1315,7 +1315,7 @@ export default {
         htlcContractAddress = htlcAddresses.erc721
       }
       // do the airdrop
-      this.resolvedAirdopAddresses.forEach((airDropAddress, index) => {
+      this.resolvedAirdopAddresses.forEach(async (airDropAddress, index) => {
         const hashPair = newSecretHashPair(airDropAddress)
         const refundDate = moment(this.refundDate).unix()
         const amount = torus.web3.utils.toWei(this.airdropAmounts[index], 'ether')
@@ -1324,30 +1324,32 @@ export default {
           const HTLCContract = new torus.web3.eth.Contract(JSON.parse(abi), htlcContractAddress)
           const vm = this
           // create a new hashlock for the airdrop
-          HTLCContract.methods
+          await HTLCContract.methods
             .newContract(airDropAddress, hashPair.hash, refundDate)
             .send({ from: fromAddress, value: amount }, async (error, transactionHash) => {
               if (error) {
                 log.error(error)
-                return
               }
+              this.airDropTxHashes.push(transactionHash)
+
               // wait till we get a tx receipt
-              const txReceipt = await vm.waitUntilTransactionMined(transactionHash)
+              const txReceipt = await vm.waitUntilTransactionMined(txHash)
               // if the hashlock has been successful, then send an email to the user
               if (txReceipt.status) {
                 this.toAddress = this.channelList.contacts[index].contact
                 this.amount = this.airdropAmounts[index]
                 this.sendEmail(this.selectedItem.symbol, transactionHash)
               }
-              if (index + 1 === this.resolvedAirdopAddresses.length) {
-                this.resetAirdropForm()
-                // show the transfer modal
-                this.showModalMessage = true
-                this.modalMessageSuccess = true
-              }
             })
         } catch (error) {
           log.error(error)
+        } finally {
+          if (this.airDropTxHashes.length == this.resolvedAirdopAddresses.length) {
+            this.resetAirdropForm()
+            // show the transfer modal
+            this.showModalMessage = true
+            this.modalMessageSuccess = true
+          }
         }
       })
     },
@@ -1370,6 +1372,7 @@ export default {
       this.airDropError = ''
       this.airDropMessage = ''
       this.airdropAmounts = []
+      this.airDropTxHashes = []
     }
   },
   mounted() {
