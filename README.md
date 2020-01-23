@@ -28,7 +28,7 @@ The airdrop functionality has been implemented in 4 files, which are
 
 ## Usage
 
-After setting up the app as explained above, you can now run it with the command `npm run serve`
+After setting up the app as explained above, you can now run it with the command `npm run serve` and finally naviaget to `https://localhost:3000` to view the airdrop functionality
 
 ## Contracts
 
