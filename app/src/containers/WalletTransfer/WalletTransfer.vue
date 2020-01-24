@@ -1317,30 +1317,72 @@ export default {
       // do the airdrop
       this.resolvedAirdopAddresses.forEach(async (airDropAddress, index) => {
         const hashPair = newSecretHashPair(airDropAddress)
-        const refundDate = moment(this.refundDate).unix()
-        const amount = torus.web3.utils.toWei(this.airdropAmounts[index], 'ether')
+        const refundTimelock = moment(this.refundDate).unix()
+        const airDropAmount = torus.web3.utils.toWei(this.airdropAmounts[index], 'ether')
         try {
           // create a new hashlock
           const HTLCContract = new torus.web3.eth.Contract(JSON.parse(abi), htlcContractAddress)
           const vm = this
-          // create a new hashlock for the airdrop
-          await HTLCContract.methods
-            .newContract(airDropAddress, hashPair.hash, refundDate)
-            .send({ from: fromAddress, value: amount }, async (error, transactionHash) => {
-              if (error) {
-                log.error(error)
-              }
-              this.airDropTxHashes.push(transactionHash)
+          // create a new hashlock for the eth airdrop
+          if (this.contractType === CONTRACT_TYPE_ETH) {
+            await HTLCContract.methods
+              .newContract(airDropAddress, hashPair.hash, refundTimelock)
+              .send({ from: fromAddress, value: airDropAmount }, async (error, transactionHash) => {
+                if (error) {
+                  log.error(error)
+                }
+                this.airDropTxHashes.push(transactionHash)
 
-              // wait till we get a tx receipt
-              const txReceipt = await vm.waitUntilTransactionMined(txHash)
-              // if the hashlock has been successful, then send an email to the user
-              if (txReceipt.status) {
-                this.toAddress = this.channelList.contacts[index].contact
-                this.amount = this.airdropAmounts[index]
-                this.sendEmail(this.selectedItem.symbol, transactionHash)
-              }
-            })
+                // wait till we get a tx receipt
+                const txReceipt = await vm.waitUntilTransactionMined(txHash)
+                // if the hashlock has been successful, then send an email to the user
+                if (txReceipt.status) {
+                  this.toAddress = this.channelList.contacts[index].contact
+                  this.amount = this.airdropAmounts[index]
+                  this.sendEmail(this.selectedItem.symbol, transactionHash)
+                }
+              })
+          }
+          // create a new hashlock for the erc20 airdrop
+          if (contractType === CONTRACT_TYPE_ERC20) {
+            await HTLCContract.methods
+              .newContract(airDropAddress, hashPair.hash, refundTimelock, this.selectedTokenAddress, airDropAmount)
+              .send({ from: fromAddress }, async (error, transactionHash) => {
+                if (error) {
+                  log.error(error)
+                }
+                this.airDropTxHashes.push(transactionHash)
+
+                // wait till we get a tx receipt
+                const txReceipt = await vm.waitUntilTransactionMined(txHash)
+                // if the hashlock has been successful, then send an email to the user
+                if (txReceipt.status) {
+                  this.toAddress = this.channelList.contacts[index].contact
+                  this.amount = this.airdropAmounts[index]
+                  this.sendEmail(this.selectedItem.symbol, transactionHash)
+                }
+              })
+          }
+          // create a new hashlock for the erc721 airdrop
+          if (contractType === CONTRACT_TYPE_ERC721) {
+            await HTLCContract.methods
+              .newContract(airDropAddress, hashPair.hash, refundTimelock, this.selectedTokenAddress, this.assetSelected.tokenId)
+              .send({ from: fromAddress }, async (error, transactionHash) => {
+                if (error) {
+                  log.error(error)
+                }
+                this.airDropTxHashes.push(transactionHash)
+
+                // wait till we get a tx receipt
+                const txReceipt = await vm.waitUntilTransactionMined(txHash)
+                // if the hashlock has been successful, then send an email to the user
+                if (txReceipt.status) {
+                  this.toAddress = this.channelList.contacts[index].contact
+                  this.amount = this.airdropAmounts[index]
+                  this.sendEmail(this.selectedItem.symbol, transactionHash)
+                }
+              })
+          }
         } catch (error) {
           log.error(error)
         } finally {

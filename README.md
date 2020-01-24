@@ -16,7 +16,7 @@ The airdrop functionality has been implemented in 4 files, which are
 - The `app/src/containers/WalletTransfer/WalletTransfer.scss` [file](/app/src/containers/WalletTransfer/WalletTransfer.scss) for the styling
 - The `app/src/utils/htlc.js` [file](/app/src/utils/htlc.js) for the hashlock contract abi's and addresses
 
-## App Flow
+## Airdrop Flow
 
 - The dashboard allows you to select a file containing a list of addresses + the corresponding token amounts for the airdrop.
 
@@ -25,6 +25,11 @@ The airdrop functionality has been implemented in 4 files, which are
 - The airdrop tokens are sent to the deployed hashlock contracts for the respective token types i.e. erc20, in the ethereum network and the intended recipients receive the normal torus email alerting them of receiving a token.
 
 - Finally once the recipient login into torus, the dashboard checks for airdrops via the function `checkForAirdrops` in the file `app/src/WalletHome/WalletHomeMain/WalletHomeMain.vue` and withdraws them to the user wallet if they are available or gets refunds for airdrops that have not been claimed after a particular date.
+
+### ERC20 and ERC721 airdrops
+
+Before airdropping any ERC20 or EERC721 tokens, make sure the total airdrop amount has been approved to send to the hashlock contract for the [ERC20](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol#L81) and [ERC721](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol#L88) tokens respectively. Otherwise the airdrop transaction will fail.
+
 
 ## Usage
 
